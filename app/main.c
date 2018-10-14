@@ -18,6 +18,8 @@
 #include "platform/gpio.h"
 #include "target.h"
 
+#include "ledmate_bridge.h"
+
 #define MAIN_TASK_STACK_SIZE	256
 #define MAIN_TASK_NAME			"Main"
 #define MAIN_TASK_PRIORITY		1
@@ -59,14 +61,17 @@ void main_task(void *p_arg)
 	ERR_CHECK(r);
 #endif
 
-	r = uart_init();
-	ERR_CHECK(r);
+	// r = uart_init();
+	// ERR_CHECK(r);
 
 	r = usb_init();
 	ERR_CHECK(r);
 
-	r = cdc_uart_bridge_init();
+	r = ledmate_bridge_init();
 	ERR_CHECK(r);
+
+	// r = cdc_uart_bridge_init();
+	// ERR_CHECK(r);
 
 	while (1) {
 		i++;
