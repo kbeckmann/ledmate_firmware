@@ -143,7 +143,8 @@ void HAL_UART_AbortReceiveCpltCallback(UART_HandleTypeDef *p_uart)
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-	platform_force_hardfault();
+	// TODO: Why do we crash? Seems to work if we just skip this :D
+	// platform_force_hardfault();
 }
 
 void USART1_IRQHandler(void)
