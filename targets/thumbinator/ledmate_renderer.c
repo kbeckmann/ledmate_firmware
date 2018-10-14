@@ -310,7 +310,7 @@ void ledmate_init(unsigned char* _buf, int _width, int _height) {
         ledmate_push_msg(foo, sizeof(foo));
     }
 #endif
-#if 1
+#if 0
     {
         char foo[] = "\x00"
             "\x20" "\x04"
@@ -365,7 +365,7 @@ void ledmate_init(unsigned char* _buf, int _width, int _height) {
         ledmate_push_msg(foo, sizeof(foo));
     }
 #endif
-#if 1
+#if 0
     {
         char foo[] = "\x01\x30\x30\x30" "<<< %s(un='%s') = %u";
         ledmate_push_msg(foo, sizeof(foo));
