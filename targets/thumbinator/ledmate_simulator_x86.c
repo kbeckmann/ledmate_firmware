@@ -47,8 +47,7 @@ int main(void) {
     int t = 0;
 
     ledmate_init(buf, width, height);
-
-/*
+#if 0
     {
         char foo[] = "\x01\x00\x04\x00" "Green long scrolling text that is very long";
         ledmate_push_msg(foo, sizeof(foo));
@@ -66,14 +65,15 @@ int main(void) {
         ledmate_push_msg(foo, sizeof(foo));
     }
     {
-        char foo[] = "\x04\x00\x00\x00" "welcome to 32c3";
-        ledmate_push_msg(foo, sizeof(foo));
-    }
-    {
         char foo[] = "\x05\x04\x00\x00" "xil.se";
         ledmate_push_msg(foo, sizeof(foo));
     }
-*/
+#endif
+    {
+        char foo[] = "\x04\x00\x00\x00" "welcome to 35c3";
+        ledmate_push_msg(foo, sizeof(foo));
+    }
+
     for(;;t++) {
         ledmate_render(t);
         print_fb(buf, width, height);
