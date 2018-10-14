@@ -104,9 +104,9 @@ static void ws2812b_task(void *p_task)
 	for (;;) {
 		i++;
 		led_swd_set(i % 2);
+		effect_show();
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
-
 }
 
 static void timer_callback(TimerHandle_t timer_handle)
