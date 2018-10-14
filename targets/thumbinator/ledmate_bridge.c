@@ -9,6 +9,8 @@
 #include "platform/uart.h"
 #include "platform/usb/cdc.h"
 
+#include "ledmate_renderer.h"
+
 #define MODULE_NAME				cdc_uart_bridge
 #include "macros.h"
 
@@ -53,7 +55,13 @@ static struct {
 	StaticTimer_t rx_led_timer_storage;
 	TimerHandle_t tx_led_timer;
 	StaticTimer_t tx_led_timer_storage;
+    int t;
 } SELF;
+
+#define lm_width  144
+#define lm_height 8
+#define lm_bpp    3
+uint8_t lm_buf[lm_width * lm_height * lm_bpp];
 
 static void rx_task(void *p_arg)
 {
@@ -100,11 +108,13 @@ static void tx_task(void *p_arg)
 
 static void ws2812b_task(void *p_task)
 {
+    ledmate_init(lm_buf, lm_width, lm_height);
+
 	for (;;) {
 		led_swd_set(true);
 		vTaskDelay(pdMS_TO_TICKS(10));
 		led_swd_set(false);
-		effect_show();
+		ledmate_render(SELF.t);
 	}
 }
 

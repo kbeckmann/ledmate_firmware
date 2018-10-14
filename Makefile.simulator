@@ -1,0 +1,7 @@
+CFILES = \
+	targets/thumbinator/alpha_blend_int.c \
+	targets/thumbinator/ledmate_renderer.c \
+	targets/thumbinator/ledmate_simulator_x86.c \
+
+all:
+	$(CC) $(CFILES) -lm -Wall -Werror -Wpedantic -o ledmate_simulator -g
