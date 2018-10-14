@@ -5,3 +5,6 @@ CFILES = \
 
 all:
 	$(CC) $(CFILES) -lm -Wall -Werror -Wpedantic -o ledmate_simulator -g
+
+clean:
+	rm -f ledmate_simulator
