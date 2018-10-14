@@ -100,12 +100,11 @@ static void tx_task(void *p_arg)
 
 static void ws2812b_task(void *p_task)
 {
-	int i = 0;
 	for (;;) {
-		i++;
-		led_swd_set(i % 2);
+		led_swd_set(true);
+		vTaskDelay(pdMS_TO_TICKS(10));
+		led_swd_set(false);
 		effect_show();
-		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 }
 
