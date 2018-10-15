@@ -10,8 +10,6 @@ PLATFORM_SRCS := \
 	platforms/stm32_common/usb/hid.c \
 	platforms/stm32_common/usb/usb.c \
 	SDK/Drivers/CMSIS/Device/ST/STM32F0xx/Source/Templates/system_stm32f0xx.c \
-	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc_ex.c \
-	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c \
 	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_cortex.c \
 	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_dma.c \
 	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_gpio.c \
@@ -27,6 +25,8 @@ PLATFORM_SRCS := \
 	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal.c \
 	SDK/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM0/port.c \
 
+#	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc_ex.c \
+#	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_adc.c \
 #	platforms/$(PLATFORM)/uart.c \
 #	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart_ex.c \
 #	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c \

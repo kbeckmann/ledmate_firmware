@@ -51,12 +51,13 @@ MIDDLEWARE_INCLUDES += \
 	SDK/Middlewares/Third_Party/FreeRTOS/Source/include \
 
 APP_SRCS := \
-	app/cdc_uart_bridge.c \
 	app/errorhandler.c \
 	app/freertos-openocd.c \
 	app/freertos.c \
 	app/persistent.c \
 	app/main.c \
+
+#	app/cdc_uart_bridge.c \
 
 APP_INCLUDES := \
 	app/config \
