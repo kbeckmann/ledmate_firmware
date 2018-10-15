@@ -124,6 +124,7 @@ stlink:
 	-f interface/stlink.cfg \
 	-c "transport select hla_swd" \
 	-f target/$(OPENOCD_TARGET).cfg \
+	-c "$(OPENOCD_TARGET).cpu configure -rtos FreeRTOS" \
 	-c "init ; reset halt"
 .PHONY: stlink
 
