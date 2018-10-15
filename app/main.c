@@ -28,11 +28,11 @@ static StackType_t main_task_stack[MAIN_TASK_STACK_SIZE];
 static TaskHandle_t main_task_handle;
 static StaticTask_t main_task_tcb;
 
-int _write(int fd, const char *msg, int len)
-{
-//	uart_tx((const uint8_t*)msg, len, 100, true);
-	return len;
-}
+// int _write(int fd, const char *msg, int len)
+// {
+// //	uart_tx((const uint8_t*)msg, len, 100, true);
+// 	return len;
+// }
 
 int _read(int fd, char *msg, int len)
 {

@@ -2,11 +2,13 @@
 #include <task.h>
 #include <timers.h>
 #include <queue.h>
+#include <string.h>
 
 #include "ledmate_bridge.h"
 #include "drivers/led.h"
 #include "drivers/max14662.h"
 #include "platform/usb/cdc.h"
+#include "platform/platform.h"
 
 #include "ledmate_renderer.h"
 
@@ -29,6 +31,7 @@
 #define QUEUE_ITEM_SIZE			sizeof(struct usb_rx_queue_item)
 
 #define LED_TIMEOUT_MS			25
+#define STATS_TIMEOUT_MS		1000
 
 /* Fun test string: 
 </////////////////////////////////////////////////////////////>[##################]
@@ -53,7 +56,13 @@ static struct {
 	StaticTimer_t rx_led_timer_storage;
 	TimerHandle_t tx_led_timer;
 	StaticTimer_t tx_led_timer_storage;
+	TimerHandle_t stats_timer;
+	StaticTimer_t stats_timer_storage;
 	int t;
+	uint32_t received_bytes;
+	uint32_t transmitted_bytes;
+	uint32_t received_bytes_total;
+	uint32_t transmitted_bytes_total;
 } SELF;
 
 #define lm_width  144
@@ -61,13 +70,28 @@ static struct {
 #define lm_bpp    3
 uint8_t lm_buf[lm_width * lm_height * lm_bpp];
 
+int _write(int fd, const char *msg, int len)
+{
+	static struct usb_rx_queue_item item;
+
+	if ((size_t)len > sizeof(item.data)) {
+		platform_force_hardfault();
+	}
+
+	item.len = len;
+	memcpy(&item.data[0], msg, len);
+	xQueueSendToBack(SELF.tx_queue_handle, &item, pdMS_TO_TICKS(100));
+
+	return len;
+}
+
 static void rx_task(void *p_arg)
 {
-	struct usb_rx_queue_item rx_queue_item;
+	static struct usb_rx_queue_item item;
 	err_t r;
 
 	for (;;) {
-		r = usb_cdc_rx(&rx_queue_item, portMAX_DELAY);
+		r = usb_cdc_rx(&item, portMAX_DELAY);
 		if (r != ERR_OK) {
 			while (1)
 				;
@@ -77,6 +101,8 @@ static void rx_task(void *p_arg)
 		xTimerReset(SELF.tx_led_timer, 0);
 
 		// Handle received data here
+		SELF.received_bytes_total += item.len;
+		// write(stdout, rx_queue_item.data, rx_queue_item.len);
 	}
 }
 
@@ -98,6 +124,7 @@ static void tx_task(void *p_arg)
 		if (r != ERR_OK && r != EUSB_CDC_NOT_READY)
 			while (1)
 				;
+		SELF.transmitted_bytes_total += item.len;
 	}
 }
 
@@ -108,11 +135,11 @@ static void ws2812b_task(void *p_task)
 	const char foo[] = "\x04\x00\x00\x00" "welcome to 35c3";
 	ledmate_push_msg(foo, sizeof(foo));
 
-	for (;;) {
+	for (SELF.t = 0; ; SELF.t++) {
 		led_swd_set(true);
 		vTaskDelay(pdMS_TO_TICKS(10));
 		led_swd_set(false);
-		ledmate_render(SELF.t);
+		// ledmate_render(SELF.t);
 	}
 }
 
@@ -122,6 +149,12 @@ static void timer_callback(TimerHandle_t timer_handle)
 		led_tx_set(false);
 	} else if (timer_handle == SELF.rx_led_timer) {
 		led_rx_set(false);
+	} else if (timer_handle == SELF.stats_timer) {
+		printf("RX: %ld bytes/s\r\nTX: %ld bytes/s\r\n\r\n",
+			SELF.received_bytes_total - SELF.received_bytes,
+			SELF.transmitted_bytes_total - SELF.transmitted_bytes);
+		SELF.received_bytes = SELF.received_bytes_total;
+		SELF.transmitted_bytes = SELF.transmitted_bytes_total;
 	}
 }
 
@@ -185,6 +218,16 @@ err_t ledmate_bridge_init(void)
 		( void * ) 0,
 		timer_callback,
 		&SELF.rx_led_timer_storage);
+
+	SELF.stats_timer = xTimerCreateStatic(
+		"stats",
+		pdMS_TO_TICKS(STATS_TIMEOUT_MS),
+		pdTRUE,
+		( void * ) 0,
+		timer_callback,
+		&SELF.stats_timer_storage);
+
+	xTimerReset(SELF.stats_timer, 0);
 
 	SELF.initialized = true;
 
