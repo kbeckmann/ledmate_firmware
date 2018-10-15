@@ -10,6 +10,7 @@
 #include "platform/usb/cdc.h"
 #include "platform/platform.h"
 #include "gpio_pins.h"
+#include "ws2812b.h"
 
 #include "ledmate_renderer.h"
 
