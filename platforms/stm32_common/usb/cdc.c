@@ -243,7 +243,8 @@ err_t usb_cdc_tx(uint8_t *p_buf, uint16_t len)
 	if (SELF.p_usbd->dev_state != USBD_STATE_CONFIGURED)
 		return EUSB_CDC_NOT_READY;
 
-	xSemaphoreTake(SELF.tx_done_semaphore, portMAX_DELAY);
+	// TODO: Why does this sometimes fail?
+	xSemaphoreTake(SELF.tx_done_semaphore, pdMS_TO_TICKS(1000));
 
 	status = HAL_PCD_EP_Transmit(SELF.p_pcd, CDC_IN_EP, p_buf, len);
 	HAL_ERR_CHECK(status, EUSB_CDC_TRANSMIT);
