@@ -120,9 +120,9 @@ cleanall:
 
 stlink:
 	@openocd \
-	-f interface/stlink-v2.cfg \
+	-f interface/stlink.cfg \
 	-c "transport select hla_swd" \
-	-f target/$(OPENOCD_TARGET) \
+	-f target/$(OPENOCD_TARGET).cfg \
 	-c "init ; reset halt"
 .PHONY: stlink
 
