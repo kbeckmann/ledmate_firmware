@@ -3,7 +3,6 @@ PLATFORM_SRCS := \
 	platforms/$(PLATFORM)/gpio.c \
 	platforms/$(PLATFORM)/startup_stm32f072xb.s \
 	platforms/$(PLATFORM)/stm32f0_hal.c \
-	platforms/$(PLATFORM)/uart.c \
 	platforms/stm32_common/pcd.c \
 	platforms/stm32_common/usb/cdc.c \
 	platforms/stm32_common/usb/core.c \
@@ -25,10 +24,12 @@ PLATFORM_SRCS := \
 	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_rcc.c \
 	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_tim_ex.c \
 	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_tim.c \
-	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart_ex.c \
-	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c \
 	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal.c \
 	SDK/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM0/port.c \
+
+#	platforms/$(PLATFORM)/uart.c \
+#	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart_ex.c \
+#	SDK/Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c \
 
 # todo
 #	platforms/$(PLATFORM)/adc.c \

@@ -92,7 +92,7 @@ static void cdc_ctrl(uint8_t cmd, uint8_t *p_buf, uint16_t len)
 	case CDC_SET_LINE_CODING:
 		if (len != sizeof(struct uart_line_coding))
 			break;
-		r = uart_config_set((struct uart_line_coding *)p_buf);
+		// r = uart_config_set((struct uart_line_coding *)p_buf);
 		(void) r;
 		/* TODO: Handle r somehow */
 		break;

@@ -3,15 +3,14 @@
 #include <timers.h>
 #include <queue.h>
 
-#include "cdc_uart_bridge.h"
+#include "ledmate_bridge.h"
 #include "drivers/led.h"
 #include "drivers/max14662.h"
-#include "platform/uart.h"
 #include "platform/usb/cdc.h"
 
 #include "ledmate_renderer.h"
 
-#define MODULE_NAME				cdc_uart_bridge
+#define MODULE_NAME				ledmate_bridge
 #include "macros.h"
 
 #define RX_TASK_STACK_SIZE		128
@@ -30,7 +29,6 @@
 #define QUEUE_ITEM_SIZE			sizeof(struct usb_rx_queue_item)
 
 #define LED_TIMEOUT_MS			25
-#define UART_RX_TIMEOUT_MS		50
 
 /* Fun test string: 
 </////////////////////////////////////////////////////////////>[##################]
@@ -88,11 +86,8 @@ static void tx_task(void *p_arg)
 	struct usb_rx_queue_item item;
 
 	for (;;) {
-		/* uart_start_rx starts a continuous DMA transfer of 64 bytes that sends its data to our 
-		 * queue that we receive here. In order to get shorter messages in near realtime we need
-		 * a timeout and flush the received bytes so far. */
-		if (xQueueReceive(SELF.tx_queue_handle, &item, pdMS_TO_TICKS(UART_RX_TIMEOUT_MS)) == pdFALSE) {
-			uart_flush_rx();
+		/* Wait for stuff to send back to the host over CDC */
+		if (xQueueReceive(SELF.tx_queue_handle, &item, portMAX_DELAY) == pdFALSE) {
 			continue;
 		}
 
@@ -146,7 +141,7 @@ err_t ledmate_bridge_init(void)
 		&SELF.rx_task_stack[0],
 		&SELF.rx_task_tcb);
 	if (SELF.rx_task_handle == NULL)
-		return ECDC_UART_BRIDGE_TASK_CREATE;
+		return ELEDMATE_BRIDGE_TASK_CREATE;
 
 	SELF.tx_task_handle = xTaskCreateStatic(
 		tx_task,
@@ -157,7 +152,7 @@ err_t ledmate_bridge_init(void)
 		&SELF.tx_task_stack[0],
 		&SELF.tx_task_tcb);
 	if (SELF.tx_task_handle == NULL)
-		return ECDC_UART_BRIDGE_TASK_CREATE;
+		return ELEDMATE_BRIDGE_TASK_CREATE;
 
 	SELF.ws2812b_task_handle = xTaskCreateStatic(
 		ws2812b_task,
@@ -168,7 +163,7 @@ err_t ledmate_bridge_init(void)
 		&SELF.ws2812b_task_stack[0],
 		&SELF.ws2812b_task_tcb);
 	if (SELF.ws2812b_task_handle == NULL)
-		return ECDC_UART_BRIDGE_TASK_CREATE;
+		return ELEDMATE_BRIDGE_TASK_CREATE;
 
 	SELF.tx_queue_handle = xQueueCreateStatic(QUEUE_LENGTH,
 		QUEUE_ITEM_SIZE,
