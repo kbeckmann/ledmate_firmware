@@ -53,7 +53,7 @@ static struct {
 	StaticTimer_t rx_led_timer_storage;
 	TimerHandle_t tx_led_timer;
 	StaticTimer_t tx_led_timer_storage;
-    int t;
+	int t;
 } SELF;
 
 #define lm_width  144
@@ -103,10 +103,10 @@ static void tx_task(void *p_arg)
 
 static void ws2812b_task(void *p_task)
 {
-    ledmate_init(lm_buf, lm_width, lm_height);
+	ledmate_init(lm_buf, lm_width, lm_height);
 
 	const char foo[] = "\x04\x00\x00\x00" "welcome to 35c3";
-    ledmate_push_msg(foo, sizeof(foo));
+	ledmate_push_msg(foo, sizeof(foo));
 
 	for (;;) {
 		led_swd_set(true);
