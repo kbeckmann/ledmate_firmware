@@ -1,8 +1,18 @@
-# XilDebug
+# LEDMATE (on XilDebug)
 
-[<img src="https://travis-ci.org/xil-se/xildebug_sw.svg?branch=master">](https://travis-ci.org/xil-se/xildebug_sw)
+## What is it?
 
-**XilDebug** is a piece of hardware that can act as a CMSIS-DAP compliant debugger, UART bridge and power profiler all in one package. This repository contains the firmware.
+A Thumbinator that renders the LEDMATE aka ws2812 144*8 ledstrip screen.
+
+It reads commands over USB-CDC.
+
+- export ACM_DEVICE=/dev/ttyACM0 (or whetever)
+- stty -F $ACM_DEVICE 115200 raw -clocal -echo icrnl
+- Now you can communicate with it nicely.
+
+## Protocol
+
+TBD
 
 # Building
 
@@ -26,7 +36,7 @@ TODO
 
 # Contributing
 
-TBD. If you want to get involved feel free to post an issue.
+TBD
 
 # License
 

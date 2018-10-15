@@ -5,7 +5,7 @@ LD      := $(CROSS_COMPILE)ld
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
 ALL_TARGETS := $(addsuffix .target,$(shell cd targets; ls -d */ | cut -f1 -d'/'))
-TARGET ?= xildebug_big
+TARGET ?= thumbinator
 
 # Include target first since it chooses a platform
 include targets/$(TARGET)/build.mk

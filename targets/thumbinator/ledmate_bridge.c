@@ -159,7 +159,7 @@ static void timer_callback(TimerHandle_t timer_handle)
 	} else if (timer_handle == SELF.rx_led_timer) {
 		led_rx_set(false);
 	} else if (timer_handle == SELF.stats_timer) {
-		printf("RX: %ld bytes/s\r\nTX: %ld bytes/s\r\nFPS: %ld frames/s\r\n",
+		printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n",
 			SELF.received_bytes_total - SELF.received_bytes,
 			SELF.transmitted_bytes_total - SELF.transmitted_bytes,
 			SELF.frames_total - SELF.frames);
