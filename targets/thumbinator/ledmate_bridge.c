@@ -105,7 +105,7 @@ static void ws2812b_task(void *p_task)
 {
     ledmate_init(lm_buf, lm_width, lm_height);
 
-	const static char foo[] = "\x04\x00\x00\x00" "welcome to 35c3";
+	const char foo[] = "\x04\x00\x00\x00" "welcome to 35c3";
     ledmate_push_msg(foo, sizeof(foo));
 
 	for (;;) {

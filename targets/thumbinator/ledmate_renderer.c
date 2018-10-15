@@ -1,6 +1,7 @@
-#include <string.h> //memcpy
+#define _GNU_SOURCE
 
 #include <stdio.h> // printf
+#include <string.h> //memcpy
 //#include <c_stdio.h> // c_printf
 
 #include "ledmate_renderer.h"
@@ -427,6 +428,7 @@ static int render_message(char *str) {
     switch (header->mode) {
         case ledmate_mode_text_left:
             dir = direction_left;
+            /* Fall through */
         case ledmate_mode_text_right:
         {
             ledmate_text* text = (ledmate_text*)header->payload;
@@ -457,6 +459,7 @@ static int render_message(char *str) {
         }
         case ledmate_mode_bounce_text_left:
             dir = direction_left;
+            /* Fall through */
         case ledmate_mode_bounce_text_right:
         {
             ledmate_text* text = (ledmate_text*)header->payload;
@@ -478,6 +481,7 @@ static int render_message(char *str) {
 
         case ledmate_mode_image_left:
             dir = direction_left;
+            /* Fall through */
         case ledmate_mode_image_right:
         {
             ledmate_image* image = (ledmate_image*)header->payload;
@@ -499,6 +503,7 @@ static int render_message(char *str) {
 
         case ledmate_mode_image_up:
             dir = direction_left;
+            /* Fall through */
         case ledmate_mode_image_down:
         {
             ledmate_image* image = (ledmate_image*)header->payload;
@@ -520,6 +525,7 @@ static int render_message(char *str) {
 
         case ledmate_mode_bounce_image_left:
             dir = direction_left;
+            /* Fall through */
         case ledmate_mode_bounce_image_right:
         {
             ledmate_image* image = (ledmate_image*)header->payload;
