@@ -138,9 +138,14 @@ static void ws2812b_task(void)
 {
 	const uint8_t *buf1 = &lm_buf[0];
 	const uint8_t *buf2 = &lm_buf[(lm_width * lm_height / 2) * 3];
+
+	// Blinky
 	led_swd_set(SELF.frames_total & 1);
+
+	// Render a frame
 	ledmate_render(SELF.frames_total);
 
+	// Push the pixels
 	ws2812b_write(buf1, lm_width * lm_height / 2, CONN_11_GPIO_Port, CONN_11_Pin);
 	ws2812b_write(buf2, lm_width * lm_height / 2, CONN_12_GPIO_Port, CONN_12_Pin);
 
