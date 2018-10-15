@@ -10,38 +10,39 @@ void ws2812b_write(const uint8_t *p_buf, size_t num_elements, GPIO_TypeDef* GPIO
 	uint32_t p;
 	uint32_t i = 0;
 
-    __disable_irq();
+	__disable_irq();
 
 	num_elements *= 8;
 	while(i < num_elements) {
-                const uint32_t index   = i >> 3; // aka i/8
-                const uint32_t current = p_buf[index];
-                const uint32_t bitmask = (1 << (8 - (i & 0x07)));
-                const uint32_t bit     = current & bitmask;
-                p                      = bit;
-                i++;
+		const uint32_t index   = i >> 3; // aka i/8
+		const uint32_t current = p_buf[index];
+		const uint32_t bitmask = (1 << (8 - (i & 0x07)));
+		const uint32_t bit     = current & bitmask;
+		p                      = bit;
+		i++;
 
 		GPIO_SET(GPIOx, GPIO_Pin);
 		if (p) {
 			__asm("nop; nop; nop; nop; nop; nop; nop; nop;"
-					  "nop; nop; nop; nop; nop; nop; nop; nop;"
-					  "nop; nop; nop; nop; nop; nop; nop; nop;"
-				   	  "nop; nop;");
+					"nop; nop; nop; nop; nop; nop; nop; nop;"
+					"nop; nop; nop; nop; nop; nop; nop; nop;"
+					"nop; nop;");
 			GPIO_RESET(GPIOx, GPIO_Pin);
 			__asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; "
 					"nop; nop; nop; nop; nop; ");
 		} else {
 			__asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; "
-                                        "nop;  nop; nop; nop;");
+					"nop;  nop; nop; nop;");
 			GPIO_RESET(GPIOx, GPIO_Pin);
 			 __asm("nop; nop; nop; nop; nop; nop; nop; nop;"
-                                          "nop; nop; nop; nop; nop; nop; nop; nop;"
-                                          "nop; nop; nop; nop; nop; nop; nop; nop;"
-                                          "nop; nop; nop;");
-
+					"nop; nop; nop; nop; nop; nop; nop; nop;"
+					"nop; nop; nop; nop; nop; nop; nop; nop;"
+					"nop; nop; nop;");
 		}
 	}
 	__enable_irq();
 
+	/* Need to guarantee that you don't call this function too fast.
+	 * The LEDs need some time between "packets". */
 //	HAL_Delay(1);
 }
