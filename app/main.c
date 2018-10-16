@@ -6,6 +6,8 @@
 #include "platform/gpio.h"
 #include "target.h"
 
+extern uint32_t _Min_Stack_Size;
+#define Min_Stack_Size ((size_t)(&_Min_Stack_Size))
 
 int _read(int fd, char *msg, int len)
 {
@@ -15,6 +17,12 @@ int _read(int fd, char *msg, int len)
 int main(void)
 {
 	err_t r;
+
+	// use this to taint the whole memory before testing
+	// memset(0x20000000, 0x11, 0x4000);
+
+	// set 0xfe watermark on the whole non-freertos stack
+	memset(0x20004000 - Min_Stack_Size, 0xfe, Min_Stack_Size);
 
 	r = target_init();
 	ERR_CHECK(r);
