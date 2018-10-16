@@ -18,7 +18,7 @@
 #define MODULE_NAME				ledmate_bridge
 #include "macros.h"
 
-#define RX_TASK_STACK_SIZE		128
+#define RX_TASK_STACK_SIZE		512 /* TODO: Reduce me */
 #define RX_TASK_NAME			"CDCrx"
 #define RX_TASK_PRIORITY		1
 
@@ -33,6 +33,7 @@
 /* Do we actually need more than 1 item here? */
 #define QUEUE_LENGTH			1
 #define QUEUE_ITEM_SIZE			sizeof(struct usb_rx_queue_item)
+#define RX_BUF_LEN				64
 
 #define LED_TIMEOUT_MS			25
 #define RENDER_TIMEOUT_MS		50 /* 20 FPS */
@@ -55,6 +56,7 @@ static struct {
 	StaticTask_t ws2812b_task_tcb;
 	StaticQueue_t tx_queue;
 	QueueHandle_t tx_queue_handle;
+	struct usb_rx_queue_item rx_item;
 	uint8_t tx_queue_storage[QUEUE_LENGTH * QUEUE_ITEM_SIZE];
 	TimerHandle_t rx_led_timer;
 	StaticTimer_t rx_led_timer_storage;
@@ -69,6 +71,8 @@ static struct {
 	uint32_t transmitted_bytes;
 	uint32_t transmitted_bytes_total;
 	uint32_t stats_counter;
+	char rx_buf[RX_BUF_LEN];
+	int rx_buf_idx;
 } SELF;
 
 #define lm_width  144
@@ -91,13 +95,81 @@ int _write(int fd, const char *msg, int len)
 	return len;
 }
 
+
+typedef enum {
+	PARSER_STATE_STRING,
+	PARSER_STATE_BIN,
+} parser_state_t;
+
+static int parse_cmd(void)
+{
+	static parser_state_t parser_state;
+	#define BIN_BUF_SIZE 1024
+	static uint8_t bin_buf[BIN_BUF_SIZE];
+	static uint32_t bin_buf_idx;
+	static uint32_t bin_buf_incoming_bytes;
+	int ret = -1;
+	int sscanf_items;
+	int value;
+
+	printf("parser_state=%d\r\nSELF.rx_buf_idx=%d\r\nbin_buf_idx=%d\r\n", parser_state, SELF.rx_buf_idx, bin_buf_idx);
+
+	if (parser_state == PARSER_STATE_STRING) {
+		/* Only parse if there is a terminator */
+		if (strchr(SELF.rx_buf, ';') == NULL) {
+			goto finish;
+		}
+
+		if (strcmp(SELF.rx_buf, "stats;") == 0) {
+			printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n*** %d ***\n\n",
+				SELF.received_bytes_total - SELF.received_bytes,
+				SELF.transmitted_bytes_total - SELF.transmitted_bytes,
+				SELF.frames_total - SELF.frames,
+				SELF.stats_counter++);
+			ret = 0;
+		} else if (sscanf_items = sscanf(SELF.rx_buf, "bin:%d", &bin_buf_incoming_bytes) == 1) {
+			if (bin_buf_incoming_bytes > BIN_BUF_SIZE) {
+				printf("Too long\n");
+				ret = 0;
+				goto finish;
+			}
+			printf("Waiting for %d binary bytes...\n", bin_buf_incoming_bytes);
+			parser_state = PARSER_STATE_BIN;
+			bin_buf_idx = 0;
+			ret = 0;
+		} else {
+			printf("Unknown command [%s]\n", SELF.rx_buf);
+			ret = 0;
+		}
+	} else if (parser_state == PARSER_STATE_BIN) {
+		if (bin_buf_idx + SELF.rx_buf_idx > BIN_BUF_SIZE) {
+			printf("Binbuf overflow\n");
+			parser_state = PARSER_STATE_STRING;
+			ret = 0;
+			goto finish;
+		}
+
+		memcpy(&bin_buf[bin_buf_idx], SELF.rx_buf, SELF.rx_buf_idx);
+		bin_buf_idx += SELF.rx_buf_idx;
+		SELF.rx_buf_idx = 0; /* Reset index because we have copied the data */
+
+		if (bin_buf_idx == bin_buf_incoming_bytes) {
+			printf("Binbuf done\n");
+			parser_state = PARSER_STATE_STRING;
+			ret = 0;
+		}
+	}
+
+finish:
+	return ret;
+}
+
 static void rx_task(void *p_arg)
 {
-	static struct usb_rx_queue_item item;
 	err_t r;
 
 	for (;;) {
-		r = usb_cdc_rx(&item, portMAX_DELAY);
+		r = usb_cdc_rx(&SELF.rx_item, portMAX_DELAY);
 		if (r != ERR_OK) {
 			while (1)
 				;
@@ -106,9 +178,28 @@ static void rx_task(void *p_arg)
 		led_tx_set(true);
 		xTimerReset(SELF.tx_led_timer, 0);
 
-		// Handle received data here
-		SELF.received_bytes_total += item.len;
-		write(STDOUT_FILENO, item.data, item.len);
+		/* Handle received data here */
+		SELF.received_bytes_total += SELF.rx_item.len;
+
+		/* local echo */
+		// write(STDOUT_FILENO, item.data, item.len);
+		if (SELF.rx_item.len + SELF.rx_buf_idx > RX_BUF_LEN) {
+			/* overflow, reset */
+			// printf("overflow!\n");
+			SELF.rx_buf_idx = 0;
+		} else {
+			memcpy(&SELF.rx_buf[SELF.rx_buf_idx], SELF.rx_item.data, SELF.rx_item.len);
+			SELF.rx_buf_idx += SELF.rx_item.len;
+			if (SELF.rx_buf_idx <= RX_BUF_LEN)
+				SELF.rx_buf[SELF.rx_buf_idx] = '\0';
+			if (parse_cmd() == 0) {
+				/* cmd is completely parsed */
+				// printf("parsed!\n");
+				SELF.rx_buf[0] = '\0';
+				SELF.rx_buf_idx = 0;
+			}
+		}
+
 	}
 }
 
