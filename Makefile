@@ -141,6 +141,10 @@ daplink:
 	-c "init ; reset halt"
 .PHONY: daplink
 
+ramusage: out/$(TARGET)/app.elf
+	arm-none-eabi-readelf -aW out/$(TARGET)/app.elf | sort -n -k 3 | grep 2000
+.PHONY: ramusage
+
 flash: out/$(TARGET)/app.elf
 	@echo -e "flash banks\nreset halt\nprogram $< verify\nreset run\nexit\n" | nc localhost 4444
 .PHONY: flash
