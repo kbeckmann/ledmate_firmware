@@ -34,7 +34,7 @@
 
 #define LED_TIMEOUT_MS			25
 #define STATS_TIMEOUT_MS		1000
-#define RENDER_TIMEOUT_MS		20 /* 50 FPS */
+#define RENDER_TIMEOUT_MS		50 /* 20 FPS */
 
 /* Fun test string: 
 </////////////////////////////////////////////////////////////>[##################]
@@ -69,6 +69,7 @@ static struct {
 	uint32_t received_bytes_total;
 	uint32_t transmitted_bytes;
 	uint32_t transmitted_bytes_total;
+	uint32_t stats_counter;
 } SELF;
 
 #define lm_width  144
@@ -159,10 +160,11 @@ static void timer_callback(TimerHandle_t timer_handle)
 	} else if (timer_handle == SELF.rx_led_timer) {
 		led_rx_set(false);
 	} else if (timer_handle == SELF.stats_timer) {
-		printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n",
+		printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n*** %d ***\n\n",
 			SELF.received_bytes_total - SELF.received_bytes,
 			SELF.transmitted_bytes_total - SELF.transmitted_bytes,
-			SELF.frames_total - SELF.frames);
+			SELF.frames_total - SELF.frames,
+			SELF.stats_counter++);
 		SELF.received_bytes = SELF.received_bytes_total;
 		SELF.transmitted_bytes = SELF.transmitted_bytes_total;
 		SELF.frames = SELF.frames_total;
