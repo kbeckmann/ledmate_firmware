@@ -33,7 +33,6 @@
 #define QUEUE_ITEM_SIZE			sizeof(struct usb_rx_queue_item)
 
 #define LED_TIMEOUT_MS			25
-#define STATS_TIMEOUT_MS		1000
 #define RENDER_TIMEOUT_MS		50 /* 20 FPS */
 
 /* Fun test string: 
@@ -59,8 +58,6 @@ static struct {
 	StaticTimer_t rx_led_timer_storage;
 	TimerHandle_t tx_led_timer;
 	StaticTimer_t tx_led_timer_storage;
-	TimerHandle_t stats_timer;
-	StaticTimer_t stats_timer_storage;
 	TimerHandle_t render_timer;
 	StaticTimer_t render_timer_storage;
 	uint32_t frames;
@@ -109,7 +106,7 @@ static void rx_task(void *p_arg)
 
 		// Handle received data here
 		SELF.received_bytes_total += item.len;
-		// write(stdout, rx_queue_item.data, rx_queue_item.len);
+		write(stdout, item.data, item.len);
 	}
 }
 
@@ -159,7 +156,7 @@ static void timer_callback(TimerHandle_t timer_handle)
 		led_tx_set(false);
 	} else if (timer_handle == SELF.rx_led_timer) {
 		led_rx_set(false);
-	} else if (timer_handle == SELF.stats_timer) {
+	}/* else if (timer_handle == SELF.stats_timer) {
 		printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n*** %d ***\n\n",
 			SELF.received_bytes_total - SELF.received_bytes,
 			SELF.transmitted_bytes_total - SELF.transmitted_bytes,
@@ -168,7 +165,7 @@ static void timer_callback(TimerHandle_t timer_handle)
 		SELF.received_bytes = SELF.received_bytes_total;
 		SELF.transmitted_bytes = SELF.transmitted_bytes_total;
 		SELF.frames = SELF.frames_total;
-	} else if (timer_handle == SELF.render_timer) {
+	} */else if (timer_handle == SELF.render_timer) {
 		ws2812b_task();
 	}
 }
@@ -222,15 +219,6 @@ err_t ledmate_bridge_init(void)
 		( void * ) 0,
 		timer_callback,
 		&SELF.rx_led_timer_storage);
-
-	SELF.stats_timer = xTimerCreateStatic(
-		"stats",
-		pdMS_TO_TICKS(STATS_TIMEOUT_MS),
-		pdTRUE,
-		( void * ) 0,
-		timer_callback,
-		&SELF.stats_timer_storage);
-	xTimerReset(SELF.stats_timer, 0);
 
 	SELF.render_timer = xTimerCreateStatic(
 		"render",
