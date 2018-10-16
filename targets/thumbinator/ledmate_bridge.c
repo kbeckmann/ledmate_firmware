@@ -3,6 +3,7 @@
 #include <timers.h>
 #include <queue.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "ledmate_bridge.h"
 #include "drivers/led.h"
@@ -106,7 +107,7 @@ static void rx_task(void *p_arg)
 
 		// Handle received data here
 		SELF.received_bytes_total += item.len;
-		write(stdout, item.data, item.len);
+		write(STDOUT_FILENO, item.data, item.len);
 	}
 }
 

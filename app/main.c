@@ -1,5 +1,6 @@
 #include <FreeRTOS.h>
 #include <task.h>
+#include <string.h>
 
 #include "platform/usb/usb.h"
 #include "ledmate_bridge.h"
@@ -22,7 +23,7 @@ int main(void)
 	// memset(0x20000000, 0x11, 0x4000);
 
 	// set 0xfe watermark on the whole non-freertos stack
-	memset(0x20004000 - Min_Stack_Size, 0xfe, Min_Stack_Size);
+	memset((void *)(0x20004000 - Min_Stack_Size), 0xfe, Min_Stack_Size);
 
 	r = target_init();
 	ERR_CHECK(r);
