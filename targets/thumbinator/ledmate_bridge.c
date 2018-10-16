@@ -30,7 +30,8 @@
 #define WS2812B_TASK_NAME			"WS28"
 #define WS2812B_TASK_PRIORITY		1
 
-#define QUEUE_LENGTH			10
+/* Do we actually need more than 1 item here? */
+#define QUEUE_LENGTH			1
 #define QUEUE_ITEM_SIZE			sizeof(struct usb_rx_queue_item)
 
 #define LED_TIMEOUT_MS			25
