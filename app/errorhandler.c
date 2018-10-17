@@ -10,7 +10,7 @@
 
 void HardFault_Handler(void)
 {
-	vTaskEndScheduler();
+	// vTaskEndScheduler();
 
 	/* Wait for a debugger to attach */
 	for (uint32_t i = 0; i < TIMEOUT_S * 10; i++) {
