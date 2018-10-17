@@ -7,3 +7,6 @@
 #define cat(x, y) x ## y
 #define cat2(x, y) cat(x, y)
 #define SELF cat2(MODULE_NAME, _self)
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
