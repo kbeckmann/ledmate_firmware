@@ -198,7 +198,6 @@ static void rx_task(void *p_arg)
 				SELF.rx_buf_idx = 0;
 			}
 		}
-
 	}
 }
 
