@@ -39,6 +39,8 @@
 #define STATS_TIMEOUT_MS		1000
 #define RENDER_TIMEOUT_MS		50 /* 20 FPS */
 
+#define BIN_BUF_SIZE			1024
+
 /* Fun test string: 
 </////////////////////////////////////////////////////////////>[##################]
 <2345678901234567890123456789012345678901234567890123456789012>[ABCDEFGHIJKLMNOPQR]
@@ -87,15 +89,11 @@ int _write(int fd, const char *msg, int len)
 {
 	static struct usb_rx_queue_item item;
 
-	if ((size_t)len > sizeof(item.data)) {
-		platform_force_hardfault();
-	}
+	item.len = len > 64 ? 64 : len;
+	memcpy(&item.data[0], msg, item.len);
+	xQueueSendToBack(SELF.tx_queue_handle, &item, pdMS_TO_TICKS(1000));
 
-	item.len = len;
-	memcpy(&item.data[0], msg, len);
-	xQueueSendToBack(SELF.tx_queue_handle, &item, pdMS_TO_TICKS(100));
-
-	return len;
+	return item.len;
 }
 
 
@@ -104,48 +102,72 @@ typedef enum {
 	PARSER_STATE_BIN,
 } parser_state_t;
 
+static void print_help(void)
+{
+	printf("Usage:\r\n");
+	printf("stats;          Prints statistics\r\n");
+	printf("cmd:<command>;  Forwards <command> to the renderer\r\n");
+	printf("bin:<size>;     Upload and render <size> binary bytes. Must send exactly this amount of bytes later. Max " STR(BIN_BUF_SIZE) " bytes. \r\n");
+	printf("\r\n");
+}
+
 static int parse_cmd(void)
 {
 	static parser_state_t parser_state;
-	#define BIN_BUF_SIZE 1024
 	static uint8_t bin_buf[BIN_BUF_SIZE];
 	static uint32_t bin_buf_idx;
 	static uint32_t bin_buf_incoming_bytes;
 	int ret = -1;
 	int sscanf_items;
 
-	printf("parser_state=%d\r\nSELF.rx_buf_idx=%d\r\nbin_buf_idx=%ld\r\n", parser_state, SELF.rx_buf_idx, bin_buf_idx);
+	// printf("parser_state=%d\r\nSELF.rx_buf_idx=%d\r\nbin_buf_idx=%ld\r\n", parser_state, SELF.rx_buf_idx, bin_buf_idx);
 
 	if (parser_state == PARSER_STATE_STRING) {
 		/* Only parse if there is a terminator */
-		if (strchr(SELF.rx_buf, ';') == NULL) {
+		char *semicolon_pos = strchr(SELF.rx_buf, ';');
+		if (semicolon_pos == NULL) {
 			goto finish;
 		}
 
 		if (strcmp(SELF.rx_buf, "stats;") == 0) {
-			printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n*** %ld ***\n\n",
+			printf(
+				"RX: %ld bytes/s\r\n"
+				"RX total: %ld bytes\r\n"
+				"TX: %ld bytes/s\r\n"
+				"TX total:  %ld bytes\r\n"
+				"FPS: %ld frames/s\r\n"
+				"Uptime: %ld seconds\r\n\r\n",
 				SELF.received_bytes_total - SELF.received_bytes,
+				SELF.received_bytes_total,
 				SELF.transmitted_bytes_total - SELF.transmitted_bytes,
+				SELF.transmitted_bytes_total,
 				SELF.frames_total - SELF.frames,
-				SELF.stats_counter++);
+				SELF.stats_counter);
 			ret = 0;
-		} else if ((sscanf_items = sscanf(SELF.rx_buf, "bin:%lu", &bin_buf_incoming_bytes)) == 1) {
+		} else if (strncmp(SELF.rx_buf, "cmd:", 4) == 0) {
+			char *command = &SELF.rx_buf[4];
+			*semicolon_pos = '\0';
+			printf("COMMAND: [%s]\r\n", command);
+			ret = 0;
+		}
+		else if ((sscanf_items = sscanf(SELF.rx_buf, "bin:%lu", &bin_buf_incoming_bytes)) == 1) {
 			if (bin_buf_incoming_bytes > BIN_BUF_SIZE) {
-				printf("Too long\n");
+				printf("Too long\r\n");
 				ret = 0;
 				goto finish;
 			}
-			printf("Waiting for %ld binary bytes...\n", bin_buf_incoming_bytes);
+			printf("Waiting for %ld binary bytes...\r\n", bin_buf_incoming_bytes);
 			parser_state = PARSER_STATE_BIN;
 			bin_buf_idx = 0;
 			ret = 0;
 		} else {
-			printf("Unknown command [%s]\n", SELF.rx_buf);
+			printf("Unknown command [%s]\r\n", SELF.rx_buf);
+			print_help();
 			ret = 0;
 		}
 	} else if (parser_state == PARSER_STATE_BIN) {
 		if (bin_buf_idx + SELF.rx_buf_idx > BIN_BUF_SIZE) {
-			printf("Binbuf overflow\n");
+			printf("Binbuf overflow\r\n");
 			parser_state = PARSER_STATE_STRING;
 			ret = 0;
 			goto finish;
@@ -156,7 +178,7 @@ static int parse_cmd(void)
 		SELF.rx_buf_idx = 0; /* Reset index because we have copied the data */
 
 		if (bin_buf_idx == bin_buf_incoming_bytes) {
-			printf("Binbuf done\n");
+			printf("Binbuf done\r\n");
 			parser_state = PARSER_STATE_STRING;
 			ret = 0;
 		}
@@ -187,7 +209,7 @@ static void rx_task(void *p_arg)
 		// write(STDOUT_FILENO, item.data, item.len);
 		if (SELF.rx_item.len + SELF.rx_buf_idx > RX_BUF_LEN) {
 			/* overflow, reset */
-			// printf("overflow!\n");
+			printf("overflow!\r\n");
 			SELF.rx_buf_idx = 0;
 		} else {
 			memcpy(&SELF.rx_buf[SELF.rx_buf_idx], SELF.rx_item.data, SELF.rx_item.len);
@@ -196,7 +218,7 @@ static void rx_task(void *p_arg)
 				SELF.rx_buf[SELF.rx_buf_idx] = '\0';
 			if (parse_cmd() == 0) {
 				/* cmd is completely parsed */
-				// printf("parsed!\n");
+				// printf("parsed!\r\n");
 				SELF.rx_buf[0] = '\0';
 				SELF.rx_buf_idx = 0;
 			}
@@ -251,14 +273,11 @@ static void timer_callback(TimerHandle_t timer_handle)
 	} else if (timer_handle == SELF.rx_led_timer) {
 		led_rx_set(false);
 	} else if (timer_handle == SELF.stats_timer) {
-		printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n*** %d ***\n\n",
-			SELF.received_bytes_total - SELF.received_bytes,
-			SELF.transmitted_bytes_total - SELF.transmitted_bytes,
-			SELF.frames_total - SELF.frames,
-			SELF.stats_counter++);
+		/* Just store the stats */
 		SELF.received_bytes = SELF.received_bytes_total;
 		SELF.transmitted_bytes = SELF.transmitted_bytes_total;
 		SELF.frames = SELF.frames_total;
+		SELF.stats_counter++;
 	} else if (timer_handle == SELF.render_timer) {
 		ws2812b_task();
 	}
