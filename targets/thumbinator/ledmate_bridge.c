@@ -110,9 +110,8 @@ static int parse_cmd(void)
 	static uint32_t bin_buf_incoming_bytes;
 	int ret = -1;
 	int sscanf_items;
-	int value;
 
-	printf("parser_state=%d\r\nSELF.rx_buf_idx=%d\r\nbin_buf_idx=%d\r\n", parser_state, SELF.rx_buf_idx, bin_buf_idx);
+	printf("parser_state=%d\r\nSELF.rx_buf_idx=%d\r\nbin_buf_idx=%ld\r\n", parser_state, SELF.rx_buf_idx, bin_buf_idx);
 
 	if (parser_state == PARSER_STATE_STRING) {
 		/* Only parse if there is a terminator */
@@ -121,19 +120,19 @@ static int parse_cmd(void)
 		}
 
 		if (strcmp(SELF.rx_buf, "stats;") == 0) {
-			printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n*** %d ***\n\n",
+			printf("RX: %ld bytes/s\nTX: %ld bytes/s\nFPS: %ld frames/s\n*** %ld ***\n\n",
 				SELF.received_bytes_total - SELF.received_bytes,
 				SELF.transmitted_bytes_total - SELF.transmitted_bytes,
 				SELF.frames_total - SELF.frames,
 				SELF.stats_counter++);
 			ret = 0;
-		} else if (sscanf_items = sscanf(SELF.rx_buf, "bin:%d", &bin_buf_incoming_bytes) == 1) {
+		} else if ((sscanf_items = sscanf(SELF.rx_buf, "bin:%lu", &bin_buf_incoming_bytes)) == 1) {
 			if (bin_buf_incoming_bytes > BIN_BUF_SIZE) {
 				printf("Too long\n");
 				ret = 0;
 				goto finish;
 			}
-			printf("Waiting for %d binary bytes...\n", bin_buf_incoming_bytes);
+			printf("Waiting for %ld binary bytes...\n", bin_buf_incoming_bytes);
 			parser_state = PARSER_STATE_BIN;
 			bin_buf_idx = 0;
 			ret = 0;
