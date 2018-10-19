@@ -27,6 +27,7 @@
 #define SCREEN_WIDTH    144
 #define SCREEN_HEIGHT   8
 
+#define MAX_MESSAGE_COUNT   8
 #define MAX_MESSAGE_SIZE    32
 
 typedef enum {
@@ -40,7 +41,7 @@ static int height;
 static int t;
 static int text_t;
 static int current_msg;
-static char msg[8][MAX_MESSAGE_SIZE];
+static char msg[MAX_MESSAGE_COUNT][MAX_MESSAGE_SIZE];
 static char msg_count = 0;
 
 #define ACOLOR(a, r, g, b) ((a)<<24 | (r)<<16 | (g)<<8 | (b)<<0)
@@ -220,7 +221,7 @@ void ledmate_push_msg(const char *str, int length) {
 	if (msg_count == sizeof(msg) / sizeof(msg[0])) {
 		memmove(&msg[0][0], &msg[1][0], sizeof(msg[0]) * (msg_count - 1));
 	}
-	if (msg_count < 8) msg_count++;
+	if (msg_count < MAX_MESSAGE_COUNT) msg_count++;
 
 	length = length >= MAX_MESSAGE_SIZE ? MAX_MESSAGE_SIZE-1 : length;
 	memcpy(&msg[msg_count - 1][0], str, length);
