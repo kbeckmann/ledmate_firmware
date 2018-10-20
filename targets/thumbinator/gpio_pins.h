@@ -53,7 +53,9 @@
 #define LED_RGB_G_Pin GPIO_PIN_7
 #define LED_RGB_G_GPIO_Port ((uint32_t) GPIOA)
 
-#define CONN_12_Pin       GPIO_PIN_15
-#define CONN_12_GPIO_Port GPIOA
+#define CONN_09_Pin       GPIO_PIN_5
+#define CONN_09_GPIO_Port GPIOB
 #define CONN_11_Pin       GPIO_PIN_3
 #define CONN_11_GPIO_Port GPIOB
+#define CONN_12_Pin       GPIO_PIN_15
+#define CONN_12_GPIO_Port GPIOA

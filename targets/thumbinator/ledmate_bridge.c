@@ -37,7 +37,7 @@
 
 #define LED_TIMEOUT_MS			25
 #define STATS_TIMEOUT_MS		1000
-#define RENDER_TIMEOUT_MS		50 /* 20 FPS */
+#define RENDER_TIMEOUT_MS		10 /* Because we turn off interrupts while pushing pixels, time will be off. */
 
 #define BIN_BUF_SIZE			1024
 
@@ -136,12 +136,14 @@ static int parse_cmd(void)
 				"TX: %ld bytes/s\r\n"
 				"TX total:  %ld bytes\r\n"
 				"FPS: %ld frames/s\r\n"
-				"Uptime: %ld seconds\r\n\r\n",
+				"Total Frames: %ld\r\n"
+				"Uptime: %ld \"seconds\"\r\n\r\n",
 				SELF.received_bytes_total - SELF.received_bytes,
 				SELF.received_bytes_total,
 				SELF.transmitted_bytes_total - SELF.transmitted_bytes,
 				SELF.transmitted_bytes_total,
 				SELF.frames_total - SELF.frames,
+				SELF.frames_total,
 				SELF.stats_counter);
 			ret = 0;
 		} else if (strncmp(SELF.rx_buf, "cmd:", 4) == 0) {
@@ -253,15 +255,31 @@ static void ws2812b_task(void)
 	const uint8_t *buf1 = &lm_buf[0];
 	const uint8_t *buf2 = &lm_buf[(lm_width * lm_height / 2) * 3];
 
-	// Blinky
-	led_swd_set(SELF.frames_total & 1);
-
-	// Render a frame
+	// Render a frame. LED can be probed to profile rendering performance.
+	led_swd_set(true);
 	ledmate_render(SELF.frames_total);
+	led_swd_set(false);
+
+	// For testing the ws2812b_write_dual implementation...
+	// memset(lm_buf, 0b00000000, lm_width * lm_height * lm_bpp);
+	// memset(lm_buf, 0b11111111, lm_width * lm_height * lm_bpp);
+	// memset(buf1, 0b00000000, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf2, 0b11111111, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf1, 0b11111111, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf2, 0b00000000, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf1, 0b10101010, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf2, 0b01010101, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf1, 0b01010101, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf2, 0b10101010, lm_width * lm_height * lm_bpp / 2);
 
 	// Push the pixels
-	ws2812b_write(buf1, lm_width * lm_height / 2, CONN_11_GPIO_Port, CONN_11_Pin);
-	ws2812b_write(buf2, lm_width * lm_height / 2, CONN_12_GPIO_Port, CONN_12_Pin);
+	// ws2812b_write(buf1, lm_width * lm_height / 2, CONN_11_GPIO_Port, CONN_11_Pin);
+	// ws2812b_write(buf2, lm_width * lm_height / 2, CONN_09_GPIO_Port, CONN_09_Pin);
+
+	led_rgb_set(1);
+	ws2812b_write_dual(lm_buf, lm_width * lm_height,
+		CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
+	led_rgb_set(0);
 
 	SELF.frames_total++;
 }
