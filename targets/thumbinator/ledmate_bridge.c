@@ -37,14 +37,29 @@
 
 #define LED_TIMEOUT_MS			25
 #define STATS_TIMEOUT_MS		1000
-#define RENDER_TIMEOUT_MS		20 /* Because we turn off interrupts while pushing pixels, time will be off. */
+#define RENDER_TIMEOUT_MS		10 /* Because we turn off interrupts while pushing pixels, time will be off. */
 
-#define BIN_BUF_SIZE			1024
+/* This should be big enough for:
+ * - A full framebuffer in LUT mode (144 * 8 * 1BytePerPixel)
+ * - A full look up table (256 * 4)
+ */
+#define BIN_BUF_SIZE			(144 * 8 + 64)
 
 /* Fun test string: 
 </////////////////////////////////////////////////////////////>[##################]
 <2345678901234567890123456789012345678901234567890123456789012>[ABCDEFGHIJKLMNOPQR]
 */
+
+typedef enum {
+	PARSER_STATE_STRING,
+	PARSER_STATE_BIN,
+} parser_state_t;
+
+typedef enum {
+	RENDER_STATE_OFF,
+	RENDER_STATE_USE_RENDERER,
+	RENDER_STATE_LUT_FRAME_READY,
+} render_state_t;
 
 static struct {
 	bool initialized;
@@ -78,12 +93,16 @@ static struct {
 	uint32_t stats_counter;
 	char rx_buf[RX_BUF_LEN];
 	int rx_buf_idx;
+	render_state_t render_state;
 } SELF;
 
 #define lm_width  144
 #define lm_height 8
 #define lm_bpp    3
 uint8_t lm_buf[lm_width * lm_height * lm_bpp];
+
+/* Holds custom data from USB, e.g. LUT-based framebuffer */
+uint8_t bin_buf[BIN_BUF_SIZE];
 
 int _write(int fd, const char *msg, int len)
 {
@@ -96,19 +115,17 @@ int _write(int fd, const char *msg, int len)
 	return item.len;
 }
 
-
-typedef enum {
-	PARSER_STATE_STRING,
-	PARSER_STATE_BIN,
-} parser_state_t;
-
 static void print_help(void)
 {
 	printf("Usage:\r\n");
 	printf("stats;          Prints statistics\r\n");
 	printf("cmd:<command>;  Forwards <command> to the renderer\r\n");
-	printf("bin:<size>;     Upload and render <size> binary bytes. Must send exactly this amount of bytes later. Max " STR(BIN_BUF_SIZE) " bytes. \r\n");
+	printf("bin:<size>;     Upload <size> binary bytes to the BINBUF. Must send exactly this amount of bytes later. Max " STR(BIN_BUF_SIZE) " bytes. \r\n");
 	printf("\r\n");
+	printf("Commands:\r\n");
+	printf("'update_lut'    Copies binbuf into the look-up-table (256 argb values)\r\n");
+	printf("'blit_lut'      Pushes out the LUT-encoded pixels stored in binbuf (no reply)\r\n");
+	printf("other           Sends command to renderer\r\n");
 }
 
 static void print_stats(void)
@@ -130,10 +147,32 @@ static void print_stats(void)
 		SELF.stats_counter);
 }
 
-static int parse_cmd(void)
+static int handle_cmd(char *cmd)
+{
+	// printf("COMMAND: [%s]\r\n", cmd);
+/*
+
+cmd:update_lut;
+cmd:blit_lut;
+
+*/
+	if (strcmp(cmd, "update_lut") == 0) {
+		printf("MSG:Copying from BINBUF to LUT;\r\n");
+		memcpy(argb_lut, bin_buf, sizeof(argb_lut));
+		printf("OK:Copy Done;\r\n");
+		return 0;
+	} else if (strcmp(cmd, "blit_lut") == 0) {
+		SELF.render_state = RENDER_STATE_LUT_FRAME_READY;
+	} else {
+		// Unknown command, forward to renderer!
+		ledmate_push_msg(cmd, strlen(cmd));
+		SELF.render_state = RENDER_STATE_USE_RENDERER;
+	}
+}
+
+static int parse_usb_data(void)
 {
 	static parser_state_t parser_state;
-	static uint8_t bin_buf[BIN_BUF_SIZE];
 	static uint32_t bin_buf_idx;
 	static uint32_t bin_buf_incoming_bytes;
 	int ret = -1;
@@ -154,30 +193,28 @@ static int parse_cmd(void)
 		} else if (strncmp(SELF.rx_buf, "cmd:", 4) == 0) {
 			char *command = &SELF.rx_buf[4];
 			*semicolon_pos = '\0';
-			printf("COMMAND: [%s]\r\n", command);
-			ret = 0;
-		}
-		else if ((sscanf_items = sscanf(SELF.rx_buf, "bin:%lu", &bin_buf_incoming_bytes)) == 1) {
+			ret = handle_cmd(command);
+		} else if ((sscanf_items = sscanf(SELF.rx_buf, "bin:%lu", &bin_buf_incoming_bytes)) == 1) {
 			if (bin_buf_incoming_bytes > BIN_BUF_SIZE) {
-				printf("Too long\r\n");
+				printf("FAIL:Too long;\r\n");
 				ret = 0;
 				goto finish;
 			}
-			printf("Waiting for %ld binary bytes...\r\n", bin_buf_incoming_bytes);
+			printf("MSG:Waiting for %ld binary bytes...;\r\n", bin_buf_incoming_bytes);
 			parser_state = PARSER_STATE_BIN;
 			bin_buf_idx = 0;
 			ret = 0;
 		} else {
-			printf("Unknown command [%s]\r\n", SELF.rx_buf);
+			printf("FAIL:Unknown command [%s];\r\n", SELF.rx_buf);
 			print_help();
 			// Uncomment to get periodic stats
 			// static int foo;
 			// if (foo++ % 200 == 0) print_stats();
-			// ret = 0;
+			ret = 0;
 		}
 	} else if (parser_state == PARSER_STATE_BIN) {
 		if (bin_buf_idx + SELF.rx_buf_idx > BIN_BUF_SIZE) {
-			printf("Binbuf overflow\r\n");
+			printf("FAIL:Binbuf overflow;\r\n");
 			parser_state = PARSER_STATE_STRING;
 			ret = 0;
 			goto finish;
@@ -188,7 +225,7 @@ static int parse_cmd(void)
 		SELF.rx_buf_idx = 0; /* Reset index because we have copied the data */
 
 		if (bin_buf_idx == bin_buf_incoming_bytes) {
-			printf("Binbuf done\r\n");
+			printf("OK:Binbuf done;\r\n");
 			parser_state = PARSER_STATE_STRING;
 			ret = 0;
 		}
@@ -213,11 +250,11 @@ static void rx_task(void *p_arg)
 		xTimerReset(SELF.tx_led_timer, 0);
 
 		/* Handle received data here */
-		continue; // TODO: REMOVE
 		SELF.received_bytes_total += SELF.rx_item.len;
 
 		/* local echo */
-		// write(STDOUT_FILENO, item.data, item.len);
+		// write(STDOUT_FILENO, SELF.rx_item.data, SELF.rx_item.len);
+
 		if (SELF.rx_item.len + SELF.rx_buf_idx > RX_BUF_LEN) {
 			/* overflow, reset */
 			printf("overflow!\r\n");
@@ -227,7 +264,7 @@ static void rx_task(void *p_arg)
 			SELF.rx_buf_idx += SELF.rx_item.len;
 			if (SELF.rx_buf_idx <= RX_BUF_LEN)
 				SELF.rx_buf[SELF.rx_buf_idx] = '\0';
-			if (parse_cmd() == 0) {
+			if (parse_usb_data() == 0) {
 				/* cmd is completely parsed */
 				// printf("parsed!\r\n");
 				SELF.rx_buf[0] = '\0';
@@ -263,13 +300,52 @@ static void tx_task(void *p_arg)
 
 static void ws2812b_task(void)
 {
+	switch (SELF.render_state) {
+	case RENDER_STATE_OFF:
+		/* Don't push any pixels */
+		break;
+	case RENDER_STATE_USE_RENDERER:
+		// Render a frame. LED can be probed to profile rendering performance.
+
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+
+		led_swd_set(true);
+		ledmate_render(SELF.frames_total);
+		led_swd_set(false);
+
+		// Push out the raw pixels
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+		led_rgb_set(1);
+		ws2812b_write_dual(lm_buf, lm_width * lm_height,
+			CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
+		led_rgb_set(0);
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+
+		break;
+	case RENDER_STATE_LUT_FRAME_READY:
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+		led_rgb_set(1);
+		ws2812b_write_dual_lut(lm_buf, lm_width * lm_height,
+			CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
+		led_rgb_set(0);
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+		HAL_GPIO_TogglePin(CONN_12_GPIO_Port, CONN_12_Pin);
+
+		/* Wait for a new frame! */
+		SELF.render_state = RENDER_STATE_OFF;
+
+		/* Signal over USB that we want a new frame */
+		printf("OK:Give me a new frame;");
+
+		break;
+	}
 	// const uint8_t *buf1 = &lm_buf[0];
 	// const uint8_t *buf2 = &lm_buf[(lm_width * lm_height / 2) * 3];
 
-	// Render a frame. LED can be probed to profile rendering performance.
-	led_swd_set(true);
-	ledmate_render(SELF.frames_total);
-	led_swd_set(false);
 
 	// For testing the ws2812b_write_dual implementation...
 	// memset(argb_lut, 0b00000000, 256 * 4);
@@ -313,10 +389,10 @@ static void ws2812b_task(void)
 	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
 	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
 
-	led_rgb_set(1);
-	ws2812b_write_dual(lm_buf, lm_width * lm_height,
-		CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
-	led_rgb_set(0);
+	// led_rgb_set(1);
+	// ws2812b_write_dual(lm_buf, lm_width * lm_height,
+	// 	CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
+	// led_rgb_set(0);
 
 	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
 	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
@@ -422,6 +498,8 @@ err_t ledmate_bridge_init(void)
 	ledmate_init(lm_buf, lm_width, lm_height);
 	const char foo[] = "\x04\x00\x00\x00" "welcome to 35c3";
 	ledmate_push_msg(foo, sizeof(foo));
+
+	SELF.render_state = RENDER_STATE_USE_RENDERER;
 
 	SELF.initialized = true;
 
