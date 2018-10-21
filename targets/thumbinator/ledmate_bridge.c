@@ -339,7 +339,7 @@ static void ws2812b_task(void)
 		SELF.render_state = RENDER_STATE_OFF;
 
 		/* Signal over USB that we want a new frame */
-		printf("OK:Give me a new frame;");
+		printf("OK:Give me a new frame;\r\n");
 
 		break;
 	}
