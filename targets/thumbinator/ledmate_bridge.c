@@ -111,6 +111,25 @@ static void print_help(void)
 	printf("\r\n");
 }
 
+static void print_stats(void)
+{
+	printf(
+		"RX: %ld bytes/s\r\n"
+		"RX total: %ld bytes\r\n"
+		"TX: %ld bytes/s\r\n"
+		"TX total:  %ld bytes\r\n"
+		"FPS: %ld frames/s\r\n"
+		"Total Frames: %ld\r\n"
+		"Uptime: %ld \"seconds\"\r\n\r\n",
+		SELF.received_bytes_total - SELF.received_bytes,
+		SELF.received_bytes_total,
+		SELF.transmitted_bytes_total - SELF.transmitted_bytes,
+		SELF.transmitted_bytes_total,
+		SELF.frames_total - SELF.frames,
+		SELF.frames_total,
+		SELF.stats_counter);
+}
+
 static int parse_cmd(void)
 {
 	static parser_state_t parser_state;
@@ -130,21 +149,7 @@ static int parse_cmd(void)
 		}
 
 		if (strcmp(SELF.rx_buf, "stats;") == 0) {
-			printf(
-				"RX: %ld bytes/s\r\n"
-				"RX total: %ld bytes\r\n"
-				"TX: %ld bytes/s\r\n"
-				"TX total:  %ld bytes\r\n"
-				"FPS: %ld frames/s\r\n"
-				"Total Frames: %ld\r\n"
-				"Uptime: %ld \"seconds\"\r\n\r\n",
-				SELF.received_bytes_total - SELF.received_bytes,
-				SELF.received_bytes_total,
-				SELF.transmitted_bytes_total - SELF.transmitted_bytes,
-				SELF.transmitted_bytes_total,
-				SELF.frames_total - SELF.frames,
-				SELF.frames_total,
-				SELF.stats_counter);
+			print_stats();
 			ret = 0;
 		} else if (strncmp(SELF.rx_buf, "cmd:", 4) == 0) {
 			char *command = &SELF.rx_buf[4];
