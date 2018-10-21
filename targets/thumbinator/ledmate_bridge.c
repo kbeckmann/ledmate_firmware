@@ -37,7 +37,7 @@
 
 #define LED_TIMEOUT_MS			25
 #define STATS_TIMEOUT_MS		1000
-#define RENDER_TIMEOUT_MS		10 /* Because we turn off interrupts while pushing pixels, time will be off. */
+#define RENDER_TIMEOUT_MS		20 /* Because we turn off interrupts while pushing pixels, time will be off. */
 
 #define BIN_BUF_SIZE			1024
 
@@ -170,7 +170,10 @@ static int parse_cmd(void)
 		} else {
 			printf("Unknown command [%s]\r\n", SELF.rx_buf);
 			print_help();
-			ret = 0;
+			// Uncomment to get periodic stats
+			// static int foo;
+			// if (foo++ % 200 == 0) print_stats();
+			// ret = 0;
 		}
 	} else if (parser_state == PARSER_STATE_BIN) {
 		if (bin_buf_idx + SELF.rx_buf_idx > BIN_BUF_SIZE) {
@@ -210,6 +213,7 @@ static void rx_task(void *p_arg)
 		xTimerReset(SELF.tx_led_timer, 0);
 
 		/* Handle received data here */
+		continue; // TODO: REMOVE
 		SELF.received_bytes_total += SELF.rx_item.len;
 
 		/* local echo */
@@ -255,10 +259,12 @@ static void tx_task(void *p_arg)
 	}
 }
 
+#include "gpio_fast.h"
+
 static void ws2812b_task(void)
 {
-	const uint8_t *buf1 = &lm_buf[0];
-	const uint8_t *buf2 = &lm_buf[(lm_width * lm_height / 2) * 3];
+	// const uint8_t *buf1 = &lm_buf[0];
+	// const uint8_t *buf2 = &lm_buf[(lm_width * lm_height / 2) * 3];
 
 	// Render a frame. LED can be probed to profile rendering performance.
 	led_swd_set(true);
@@ -266,7 +272,17 @@ static void ws2812b_task(void)
 	led_swd_set(false);
 
 	// For testing the ws2812b_write_dual implementation...
+	// memset(argb_lut, 0b00000000, 256 * 4);
 	// memset(lm_buf, 0b00000000, lm_width * lm_height * lm_bpp);
+
+	// memset(argb_lut, 0b11111111, 256 * 4);
+	// memset(lm_buf, 0b11111111, lm_width * lm_height * lm_bpp);
+
+	// memset(&argb_lut[  0], 0b00000000, 256 * 2);
+	// memset(buf1,           0, lm_width * lm_height * lm_bpp / 2);
+	// memset(&argb_lut[128], 0b11111111, 256 * 2);
+	// memset(buf2,           0b11111111, lm_width * lm_height * lm_bpp / 2);
+
 	// memset(lm_buf, 0b11111111, lm_width * lm_height * lm_bpp);
 	// memset(buf1, 0b00000000, lm_width * lm_height * lm_bpp / 2);
 	// memset(buf2, 0b11111111, lm_width * lm_height * lm_bpp / 2);
@@ -278,13 +294,42 @@ static void ws2812b_task(void)
 	// memset(buf2, 0b10101010, lm_width * lm_height * lm_bpp / 2);
 
 	// Push the pixels
-	// ws2812b_write(buf1, lm_width * lm_height / 2, CONN_11_GPIO_Port, CONN_11_Pin);
-	// ws2812b_write(buf2, lm_width * lm_height / 2, CONN_09_GPIO_Port, CONN_09_Pin);
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+
+	// ws2812b_write_single(buf1, lm_width * lm_height / 2, CONN_11_GPIO_Port, CONN_11_Pin);
+
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+
+	// ws2812b_write_single(buf2, lm_width * lm_height / 2, CONN_09_GPIO_Port, CONN_09_Pin);
+
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
 
 	led_rgb_set(1);
 	ws2812b_write_dual(lm_buf, lm_width * lm_height,
 		CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
 	led_rgb_set(0);
+
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+
+	// ws2812b_write_dual_lut(lm_buf, lm_width * lm_height,
+	// 	CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
+
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
 
 	SELF.frames_total++;
 }
