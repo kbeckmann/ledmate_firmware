@@ -4,6 +4,7 @@
 #include <queue.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "ledmate_bridge.h"
 #include "drivers/led.h"
@@ -91,7 +92,7 @@ static struct {
 	uint32_t transmitted_bytes;
 	uint32_t transmitted_bytes_total;
 	uint32_t stats_counter;
-	char rx_buf[RX_BUF_LEN];
+	char rx_buf[RX_BUF_LEN + 1];
 	int rx_buf_idx;
 	render_state_t render_state;
 } SELF;
@@ -160,7 +161,6 @@ cmd:blit_lut;
 		printf("MSG:Copying from BINBUF to LUT;\r\n");
 		memcpy(argb_lut, bin_buf, sizeof(argb_lut));
 		printf("OK:Copy Done;\r\n");
-		return 0;
 	} else if (strcmp(cmd, "blit_lut") == 0) {
 		SELF.render_state = RENDER_STATE_LUT_FRAME_READY;
 	} else {
@@ -168,6 +168,8 @@ cmd:blit_lut;
 		ledmate_push_msg(cmd, strlen(cmd));
 		SELF.render_state = RENDER_STATE_USE_RENDERER;
 	}
+
+	return 0;
 }
 
 static int parse_usb_data(void)
@@ -262,8 +264,10 @@ static void rx_task(void *p_arg)
 		} else {
 			memcpy(&SELF.rx_buf[SELF.rx_buf_idx], SELF.rx_item.data, SELF.rx_item.len);
 			SELF.rx_buf_idx += SELF.rx_item.len;
-			if (SELF.rx_buf_idx <= RX_BUF_LEN)
-				SELF.rx_buf[SELF.rx_buf_idx] = '\0';
+			if (SELF.rx_buf_idx > RX_BUF_LEN) {
+				// This should never happen!
+				platform_force_hardfault();
+			}
 			if (parse_usb_data() == 0) {
 				/* cmd is completely parsed */
 				// printf("parsed!\r\n");
@@ -300,6 +304,7 @@ static void tx_task(void *p_arg)
 
 static void ws2812b_task(void)
 {
+#if 1
 	switch (SELF.render_state) {
 	case RENDER_STATE_OFF:
 		/* Don't push any pixels */
@@ -343,8 +348,10 @@ static void ws2812b_task(void)
 
 		break;
 	}
-	// const uint8_t *buf1 = &lm_buf[0];
-	// const uint8_t *buf2 = &lm_buf[(lm_width * lm_height / 2) * 3];
+
+#else
+	uint8_t *buf1 = &lm_buf[0];
+	uint8_t *buf2 = &lm_buf[(lm_width * lm_height / 2) * 3];
 
 
 	// For testing the ws2812b_write_dual implementation...
@@ -354,11 +361,26 @@ static void ws2812b_task(void)
 	// memset(argb_lut, 0b11111111, 256 * 4);
 	// memset(lm_buf, 0b11111111, lm_width * lm_height * lm_bpp);
 
-	// memset(&argb_lut[  0], 0b00000000, 256 * 2);
-	// memset(buf1,           0, lm_width * lm_height * lm_bpp / 2);
-	// memset(&argb_lut[128], 0b11111111, 256 * 2);
-	// memset(buf2,           0b11111111, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf1, 0, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf2, 1, lm_width * lm_height * lm_bpp / 2);
 
+	for (int i = 0; i < 128; i++) {
+		argb_lut[i +   0].argb = 0x007F103F;
+		argb_lut[i + 128].argb = 0x00701F30; 
+	}
+
+	// Force random access
+	for (int i = 0; i < lm_width * lm_height / 2; i++) {
+		buf1[i] = (rand() % 128);
+		buf2[i] = (rand() % 128) + 128;
+	}
+
+	// memset(&argb_lut[  0], 0b00000000, 256 * 2);
+	// memset(&argb_lut[128], 0b11111111, 256 * 2);
+	// memset(buf1,           0b11111111, lm_width * lm_height * lm_bpp / 2);
+	// memset(buf2,           0b00000000, lm_width * lm_height * lm_bpp / 2);
+
+	// memset(lm_buf, 0b00000000, lm_width * lm_height * lm_bpp);
 	// memset(lm_buf, 0b11111111, lm_width * lm_height * lm_bpp);
 	// memset(buf1, 0b00000000, lm_width * lm_height * lm_bpp / 2);
 	// memset(buf2, 0b11111111, lm_width * lm_height * lm_bpp / 2);
@@ -394,18 +416,20 @@ static void ws2812b_task(void)
 	// 	CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
 	// led_rgb_set(0);
 
-	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
-	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
-	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
-	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
 
-	// ws2812b_write_dual_lut(lm_buf, lm_width * lm_height,
-	// 	CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
+	ws2812b_write_dual_lut(lm_buf, lm_width * lm_height,
+		CONN_09_GPIO_Port, CONN_09_Pin, CONN_11_Pin);
 
-	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
-	// GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
-	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
-	// GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	GPIO_SET(CONN_12_GPIO_Port, CONN_12_Pin);
+	GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+	GPIO_RESET(CONN_12_GPIO_Port, CONN_12_Pin);
+
+#endif
 
 	SELF.frames_total++;
 }
