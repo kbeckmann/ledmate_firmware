@@ -123,26 +123,36 @@ void ws2812b_write_dual(const uint8_t *p_buf, size_t num_pixels,
 
 		GPIO_SET(GPIOx, GPIO_Pin_A | GPIO_Pin_B);
 		if (b1 && b2) {
-			__asm("nop; nop; nop; nop; nop; nop; nop; nop;"
-				  "nop; nop; nop; nop; nop; nop; nop; nop;"
-				  "nop; nop; nop; nop; nop; nop; ");
+			// 750 ns
+			// 1250 ns total
+			__asm("nop; nop; nop; nop; nop; nop; nop; nop;");
+			__asm("nop; nop; nop; nop; nop; nop; nop; nop;");
+			__asm("nop; nop; nop; nop; nop; nop; nop; nop;");
+			__asm("nop; ");
 			GPIO_RESET(GPIOx, GPIO_Pin_A | GPIO_Pin_B);
-			__asm("nop; nop; nop; nop; nop; nop;");
+			__asm("nop; nop;");
 		} else if (b1 && !b2) {
-			__asm("nop; nop; nop; nop; nop;");
+			// 375 ns
+			// 750 ns
+			// 1250ns total
+			__asm("nop; nop; nop; nop; nop; nop; nop; nop;");
 			GPIO_RESET(GPIOx, GPIO_Pin_B);
-			__asm("nop; nop; nop; nop; nop; nop; nop;");
+			__asm("nop; nop; nop; nop; nop; nop; nop; nop;");
+			__asm("nop; nop; nop; nop; nop;");
 			GPIO_RESET(GPIOx, GPIO_Pin_A);
-			__asm("nop; nop; nop; nop; nop; nop; nop; nop;"
-				  "nop; nop; nop; nop;");
+			__asm("nop; nop;");
 		} else if (!b1 && b2) {
+			// 375 ns
+			// 750 ns
+			// 1250ns total
 			__asm("nop; nop; nop; nop; nop;");
 			GPIO_RESET(GPIOx, GPIO_Pin_A);
-			__asm("nop; nop; nop; nop; nop; nop; nop;");
+			__asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
 			GPIO_RESET(GPIOx, GPIO_Pin_B);
-			__asm("nop; nop; nop; nop; nop; nop; nop; nop;"
-				  "nop; nop; nop; nop;");
+			__asm("nop; nop; nop; nop; nop;");
 		} else {
+			// 375 ns
+			// 1250 ns total
 			__asm("nop; nop; nop; nop; ");
 			GPIO_RESET(GPIOx, GPIO_Pin_A | GPIO_Pin_B);
 			__asm("nop; nop; nop; nop; nop; nop; nop; nop;"
@@ -154,7 +164,6 @@ void ws2812b_write_dual(const uint8_t *p_buf, size_t num_pixels,
 
 	/* Need to guarantee that you don't call this function too fast.
 	 * The LEDs need some time between "packets". */
-//	HAL_Delay(1);
 }
 
 /* Pins must be on the same PORT */
