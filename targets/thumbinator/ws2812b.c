@@ -211,7 +211,7 @@ void ws2812b_write_dual_lut(const uint8_t *p_buf, size_t num_pixels,
 			__asm("");
 			GPIO_RESET(GPIOx, GPIO_Pin_A | GPIO_Pin_B);
 			__asm("nop; nop; nop; nop; nop; nop; nop; nop;");
-			__asm("nop; nop; nop; nop; nop; nop;");
+			__asm("nop; nop; nop; nop; nop;");
 		}
 
 		// This code is moved down here for timing reasons...
