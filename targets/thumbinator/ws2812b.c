@@ -216,7 +216,7 @@ void ws2812b_write_dual_lut(const uint8_t *p_buf, size_t num_pixels,
 
 		// This code is moved down here for timing reasons...
 		i++;
-		if (bitmask == 0) {
+		if (bitmask == 1) {
 			bitmask = (1 << 23);
 			index1++;
 			index2++;
