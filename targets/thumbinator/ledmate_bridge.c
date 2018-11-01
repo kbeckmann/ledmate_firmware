@@ -122,11 +122,8 @@ static void print_help(void)
 	printf("stats;          Prints statistics\r\n");
 	printf("cmd:<command>;  Forwards <command> to the renderer\r\n");
 	printf("bin:<size>;     Upload <size> binary bytes to the BINBUF. Must send exactly this amount of bytes later. Max " STR(BIN_BUF_SIZE) " bytes. \r\n");
-	printf("\r\n");
-	printf("Commands:\r\n");
-	printf("'update_lut'    Copies binbuf into the look-up-table (256 argb values)\r\n");
-	printf("'blit_lut'      Pushes out the LUT-encoded pixels stored in binbuf (no reply)\r\n");
-	printf("other           Sends command to renderer\r\n");
+	printf("update_lut;     Copies binbuf into the look-up-table (256 argb values)\r\n");
+	printf("blit_lut;       Pushes out the LUT-encoded pixels stored in binbuf (no reply)\r\n");
 }
 
 static void print_stats(void)
@@ -148,30 +145,6 @@ static void print_stats(void)
 		SELF.stats_counter);
 }
 
-static int handle_cmd(char *cmd)
-{
-	// printf("COMMAND: [%s]\r\n", cmd);
-/*
-
-cmd:update_lut;
-cmd:blit_lut;
-
-*/
-	if (strcmp(cmd, "update_lut") == 0) {
-		printf("MSG:Copying from BINBUF to LUT;\r\n");
-		memcpy(argb_lut, bin_buf, sizeof(argb_lut));
-		printf("OK:Copy Done;\r\n");
-	} else if (strcmp(cmd, "blit_lut") == 0) {
-		SELF.render_state = RENDER_STATE_LUT_FRAME_READY;
-	} else {
-		// Unknown command, forward to renderer!
-		ledmate_push_msg(cmd, strlen(cmd));
-		SELF.render_state = RENDER_STATE_USE_RENDERER;
-	}
-
-	return 0;
-}
-
 static int parse_usb_data(void)
 {
 	static parser_state_t parser_state;
@@ -189,30 +162,36 @@ static int parse_usb_data(void)
 			goto finish;
 		}
 
-		if (strcmp(SELF.rx_buf, "stats;") == 0) {
+		*semicolon_pos = '\0';
+		ret = 0;
+
+		if (strcmp(SELF.rx_buf, "stats") == 0) {
 			print_stats();
-			ret = 0;
 		} else if (strncmp(SELF.rx_buf, "cmd:", 4) == 0) {
-			char *command = &SELF.rx_buf[4];
-			*semicolon_pos = '\0';
-			ret = handle_cmd(command);
+			char *cmd = SELF.rx_buf + 4;
+			// printf("COMMAND: [%s]\r\n", cmd);
+			ledmate_push_msg(cmd, strlen(cmd));
+			SELF.render_state = RENDER_STATE_USE_RENDERER;
 		} else if ((sscanf_items = sscanf(SELF.rx_buf, "bin:%lu", &bin_buf_incoming_bytes)) == 1) {
 			if (bin_buf_incoming_bytes > BIN_BUF_SIZE) {
 				printf("FAIL:Too long;\r\n");
-				ret = 0;
 				goto finish;
 			}
 			printf("MSG:Waiting for %ld binary bytes...;\r\n", bin_buf_incoming_bytes);
 			parser_state = PARSER_STATE_BIN;
 			bin_buf_idx = 0;
-			ret = 0;
+		} else if (strcmp(SELF.rx_buf, "update_lut") == 0) {
+			printf("MSG:Copying from BINBUF to LUT;\r\n");
+			memcpy(argb_lut, bin_buf, sizeof(argb_lut));
+			printf("OK:Copy Done;\r\n");
+		} else if (strcmp(SELF.rx_buf, "blit_lut") == 0) {
+			SELF.render_state = RENDER_STATE_LUT_FRAME_READY;
 		} else {
 			printf("FAIL:Unknown command [%s];\r\n", SELF.rx_buf);
 			print_help();
 			// Uncomment to get periodic stats
 			// static int foo;
 			// if (foo++ % 200 == 0) print_stats();
-			ret = 0;
 		}
 	} else if (parser_state == PARSER_STATE_BIN) {
 		if (bin_buf_idx + SELF.rx_buf_idx > BIN_BUF_SIZE) {
@@ -260,6 +239,7 @@ static void rx_task(void *p_arg)
 		if (SELF.rx_item.len + SELF.rx_buf_idx > RX_BUF_LEN) {
 			/* overflow, reset */
 			printf("overflow!\r\n");
+			memset(SELF.rx_buf, 0, RX_BUF_LEN);
 			SELF.rx_buf_idx = 0;
 		} else {
 			memcpy(&SELF.rx_buf[SELF.rx_buf_idx], SELF.rx_item.data, SELF.rx_item.len);
@@ -271,7 +251,7 @@ static void rx_task(void *p_arg)
 			if (parse_usb_data() == 0) {
 				/* cmd is completely parsed */
 				// printf("parsed!\r\n");
-				SELF.rx_buf[0] = '\0';
+				memset(SELF.rx_buf, 0, RX_BUF_LEN);
 				SELF.rx_buf_idx = 0;
 			}
 		}
