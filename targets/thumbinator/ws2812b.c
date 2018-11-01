@@ -173,8 +173,8 @@ void ws2812b_write_dual_lut(const uint8_t *p_buf, size_t num_pixels,
 {
 	__disable_irq();
 
-	const uint32_t offset = (num_pixels * 3) / 2;
-	const uint32_t num_bits = num_pixels * (8 * 3) / 2;
+	const uint32_t offset = num_pixels / 2;
+	const uint32_t num_bits = num_pixels * 3 * 8 / 2;
 	uint32_t index1 = 0;
 	uint32_t index2 = offset;
 	uint32_t i = 0;

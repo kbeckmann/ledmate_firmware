@@ -123,7 +123,8 @@ static void print_help(void)
 	printf("cmd:<command>;  Forwards <command> to the renderer\r\n");
 	printf("bin:<size>;     Upload <size> binary bytes to the BINBUF. Must send exactly this amount of bytes later. Max " STR(BIN_BUF_SIZE) " bytes. \r\n");
 	printf("update_lut;     Copies binbuf into the look-up-table (256 argb values)\r\n");
-	printf("blit_lut;       Pushes out the LUT-encoded pixels stored in binbuf (no reply)\r\n");
+	printf("copy_and_blit;  Copies binbuf into the framebuffer and pushes the pixels\r\n");
+	printf("blit;           Pushes the pixels\r\n");
 }
 
 static void print_stats(void)
@@ -184,7 +185,10 @@ static int parse_usb_data(void)
 			printf("MSG:Copying from BINBUF to LUT;\r\n");
 			memcpy(argb_lut, bin_buf, sizeof(argb_lut));
 			printf("OK:Copy Done;\r\n");
-		} else if (strcmp(SELF.rx_buf, "blit_lut") == 0) {
+		} else if (strcmp(SELF.rx_buf, "copy_and_blit") == 0) {
+			memcpy(lm_buf, bin_buf, lm_width * lm_height);
+			SELF.render_state = RENDER_STATE_LUT_FRAME_READY;
+		} else if (strcmp(SELF.rx_buf, "blit") == 0) {
 			SELF.render_state = RENDER_STATE_LUT_FRAME_READY;
 		} else {
 			printf("FAIL:Unknown command [%s];\r\n", SELF.rx_buf);
@@ -345,8 +349,8 @@ static void ws2812b_task(void)
 	// memset(buf2, 1, lm_width * lm_height * lm_bpp / 2);
 
 	for (int i = 0; i < 128; i++) {
-		argb_lut[i +   0].argb = 0x007F103F;
-		argb_lut[i + 128].argb = 0x00701F30; 
+		argb_lut[i +   0].argb = 0x00101010;
+		argb_lut[i + 128].argb = 0x00101010; 
 	}
 
 	// Force random access
