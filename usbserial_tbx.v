@@ -5,15 +5,17 @@
 */
 
 module usbserial_tbx (
-        input  pin_clk,
+        input  clk_25mhz,
 
-        inout  pin_usb_p,
-        inout  pin_usb_n,
-        output pin_pu,
+        inout  usb_fpga_dp,
+        inout  usb_fpga_dn,
+        output usb_fpga_pu_dp,
 
-        output pin_led,
+        output [7:0] led,
 
-        output [3:0] debug
+        // output [3:0] debug
+
+        output wifi_gpio0
     );
 
     wire clk_48mhz;
@@ -21,14 +23,14 @@ module usbserial_tbx (
     wire clk_locked;
 
     // Use an icepll generated pll
-    pll pll48( .clock_in(pin_clk), .clock_out(clk_48mhz), .locked( clk_locked ) );
+    pll pll48( .clkin(clk_25mhz), .clkout0(clk_48mhz), .locked( clk_locked ) );
 
     // LED
-    reg [22:0] ledCounter;
+    reg [24:0] ledCounter;
     always @(posedge clk_48mhz) begin
         ledCounter <= ledCounter + 1;
     end
-    assign pin_led = ledCounter[ 22 ];
+    // assign led = ledCounter[ 24:(24-8) ];
 
     // Generate reset signal
     reg [5:0] reset_cnt = 0;
@@ -56,8 +58,8 @@ module usbserial_tbx (
         .reset      (reset),
 
         // pins
-        .pin_usb_p( pin_usb_p ),
-        .pin_usb_n( pin_usb_n ),
+        .pin_usb_p( usb_fpga_dp ),
+        .pin_usb_n( usb_fpga_dn ),
 
         // uart pipeline in
         .uart_in_data( uart_in_data ),
@@ -72,6 +74,16 @@ module usbserial_tbx (
     );
 
     // USB Host Detect Pull Up
-    assign pin_pu = 1'b1;
+    assign usb_fpga_pu_dp = 1'b1;
 
+    // Tie GPIO0, keep board from rebooting
+    assign wifi_gpio0 = 1'1;
+
+    reg [7:0] led_r;
+    assign led = led_r;
+    always @(posedge clk_48mhz) begin
+        if (uart_in_valid) begin
+            led_r <= uart_in_data;
+        end
+    end
 endmodule
