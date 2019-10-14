@@ -1,0 +1,62 @@
+##
+## Make and program Kilsyth with USB-C PMOD
+##
+
+BASENAME = usbserial
+TARGETNAME = $(BASENAME)_tbx
+PROJTOP = $(TARGETNAME)
+
+RTL_USB_DIR = usb
+
+SOURCES = \
+	$(RTL_USB_DIR)/edge_detect.v \
+	$(RTL_USB_DIR)/serial.v \
+	$(RTL_USB_DIR)/usb_fs_in_arb.v \
+	$(RTL_USB_DIR)/usb_fs_in_pe.v \
+	$(RTL_USB_DIR)/usb_fs_out_arb.v \
+	$(RTL_USB_DIR)/usb_fs_out_pe.v \
+	$(RTL_USB_DIR)/usb_fs_pe.v \
+	$(RTL_USB_DIR)/usb_fs_rx.v \
+	$(RTL_USB_DIR)/usb_fs_tx_mux.v \
+	$(RTL_USB_DIR)/usb_fs_tx.v \
+	$(RTL_USB_DIR)/usb_reset_det.v \
+	$(RTL_USB_DIR)/usb_serial_ctrl_ep.v \
+	$(RTL_USB_DIR)/usb_uart_bridge_ep.v \
+	$(RTL_USB_DIR)/usb_uart_core.v \
+	$(RTL_USB_DIR)/usb_uart_ecp5.v \
+ 	pll.v
+
+SRC = $(PROJTOP).v $(SOURCES)
+
+DEVICE = 45k
+PACKAGE = CABGA381
+
+CLK_MHZ = 48
+
+all: $(PROJTOP).bit
+
+pll.v:
+	ecppll -i 16 -o $(CLK_MHZ) -f $@
+
+
+$(PROJTOP).bit: $(PROJTOP).config
+	ecppack  --svf $(PROJTOP).svf $(PROJTOP).config $(PROJTOP).bit
+
+$(PROJTOP).config: $(PROJTOP).json
+	nextpnr-ecp5 --$(DEVICE) --json $(PROJTOP).json \
+		--lpf kilsyth.lpf \
+		--textcfg $(PROJTOP).config \
+		--package CABGA381
+
+$(PROJTOP).json: $(SRC)
+	yosys -q -p 'synth_ecp5 -top $(PROJTOP) -json $@' $^
+
+
+prog: $(PROJTOP).bit
+	$(UJPROG) $<
+
+clean:
+	rm -f $(PROJTOP).svf $(PROJTOP).json $(PROJTOP).config $(PROJTOP).bit pll.v
+
+.SECONDARY:
+.PHONY: all synth prog clean gui
