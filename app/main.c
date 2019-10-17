@@ -28,7 +28,14 @@ static StaticTask_t main_task_tcb;
 
 int _write(int fd, const char *msg, int len)
 {
-//	uart_tx((const uint8_t*)msg, len, 100, true);
+	// uart_tx((const uint8_t*)msg, len, 100, true);
+	uint32_t chunklen;
+	while (len > 0) {
+		chunklen = len > 64 ? 64 : len;
+		usb_cdc_tx((uint8_t*)msg, chunklen);
+		msg += chunklen;
+		len -= chunklen;
+	}
 	return len;
 }
 
@@ -59,8 +66,8 @@ void main_task(void *p_arg)
 	ERR_CHECK(r);
 #endif
 
-	r = uart_init();
-	ERR_CHECK(r);
+	// r = uart_init();
+	// ERR_CHECK(r);
 
 	r = usb_init();
 	ERR_CHECK(r);

@@ -4,6 +4,7 @@
 #include <queue.h>
 
 #include "cdc_uart_bridge.h"
+#include "serial_prog.h"
 #include "drivers/led.h"
 #include "drivers/max14662.h"
 #include "platform/uart.h"
@@ -12,7 +13,7 @@
 #define MODULE_NAME				cdc_uart_bridge
 #include "macros.h"
 
-#define RX_TASK_STACK_SIZE		128
+#define RX_TASK_STACK_SIZE		1024
 #define RX_TASK_NAME			"CDCrx"
 #define RX_TASK_PRIORITY		1
 
@@ -36,7 +37,7 @@ static struct {
 	StackType_t rx_task_stack[RX_TASK_STACK_SIZE];
 	TaskHandle_t rx_task_handle;
 	StaticTask_t rx_task_tcb;
-	StackType_t tx_task_stack[RX_TASK_STACK_SIZE];
+	StackType_t tx_task_stack[TX_TASK_STACK_SIZE];
 	TaskHandle_t tx_task_handle;
 	StaticTask_t tx_task_tcb;
 	StaticQueue_t tx_queue;
@@ -60,17 +61,8 @@ static void rx_task(void *p_arg)
 				;
 		}
 
-		r = uart_tx(rx_queue_item.data, rx_queue_item.len, 1000, true);
-		switch (r) {
-		case ERR_OK:
-			led_tx_set(true);
-			xTimerReset(SELF.tx_led_timer, 0);
-		case EUART_DISABLED:
-			break;
-		default:
-			/* TODO: Figure out why we sometimes get BUSY even though things work out fine */
-			break;
-		}
+		usb_prog_handle_rx(rx_queue_item.data, rx_queue_item.len);
+		usb_prog_process_events();
 	}
 }
 
@@ -157,11 +149,13 @@ err_t cdc_uart_bridge_init(void)
 		timer_callback,
 		&SELF.rx_led_timer_storage);
 
-	r = uart_enable();
-	ERR_CHECK(r);
+	// r = uart_enable();
+	// ERR_CHECK(r);
 
-	r = uart_start_rx(SELF.tx_queue_handle);
-	ERR_CHECK(r);
+	// r = uart_start_rx(SELF.tx_queue_handle);
+	// ERR_CHECK(r);
+
+	usb_prog_init();
 
 	SELF.initialized = true;
 

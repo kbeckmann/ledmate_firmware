@@ -57,6 +57,7 @@ APP_SRCS := \
 	app/freertos.c \
 	app/persistent.c \
 	app/main.c \
+	app/serial_prog.c \
 
 APP_INCLUDES := \
 	app/config \

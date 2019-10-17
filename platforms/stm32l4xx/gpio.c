@@ -50,13 +50,13 @@ void gpio_init(void)
 	gpio_config.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOA, &gpio_config);
 
-	gpio_config.Pin = DUT_VDD_EN_Pin | DUT_SWCLK_Pin | DUT_SWDIO_Pin | LED_RGB_B_Pin | GPIO0_Pin | GPIO1_Pin;
+	gpio_config.Pin = DUT_VDD_EN_Pin | DUT_SWCLK_Pin | DUT_SWDIO_Pin | LED_RGB_B_Pin | GPIO0_Pin | GPIO1_Pin | GPIO_PIN_6 | GPIO_PIN_7;
 	gpio_config.Mode = GPIO_MODE_OUTPUT_PP;
 	gpio_config.Pull = GPIO_NOPULL;
-	gpio_config.Speed = GPIO_SPEED_FREQ_LOW;
+	gpio_config.Speed = GPIO_SPEED_FREQ_MEDIUM;
 	HAL_GPIO_Init(GPIOB, &gpio_config);
 
-	gpio_config.Pin = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15 | GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
+	gpio_config.Pin = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15 | GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5;
 	gpio_config.Mode = GPIO_MODE_ANALOG;
 	gpio_config.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(GPIOB, &gpio_config);
